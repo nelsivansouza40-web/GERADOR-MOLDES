@@ -37,7 +37,7 @@ jobs:
       - name: Montar o site
         run: |
           mkdir -p _site
-          cp -r index.html manifest.webmanifest sw.js icons js _site/
+          cp -r index.html manifest.webmanifest sw.js icons imagens js _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

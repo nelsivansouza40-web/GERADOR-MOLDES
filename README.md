@@ -26,7 +26,7 @@ papel, papel-cartão, papelão (até 10 mm) e EVA.
 | EPI e EPC | capacete, protetor auricular tipo concha, botina, óculos de proteção, cone de sinalização, extintor |
 | Máquinas | trator, betoneira |
 | Personagens | trabalhador com EPI, robô |
-| Seu modelo 3D | importação de arquivo .obj ou .stl (por exemplo, de Printables, Thingiverse ou Sketchfab) |
+| Seu modelo 3D | busca automática de modelos .stl livres (Wikimedia Commons) e importação de arquivos .stl, .obj ou .glb (Printables, Thingiverse, Sketchfab) |
 
 As partes do corpo vêm em tamanho real por padrão (cabeça, braço, mão, pé etc.);
 olho, orelha, nariz e boca vêm ampliados para estudo e demonstração.
@@ -48,6 +48,17 @@ olho, orelha, nariz e boca vêm ampliados para estudo e demonstração.
 6. Bordas cortadas recebem um **número** (bordas com o mesmo número se colam) e
    uma aba de cola sem sobrepor outras partes.
 7. A prévia 3D mostra a figura montada; dá para girar com o dedo ou o mouse.
+
+## Busca de modelos 3D na internet
+
+Em **Buscar ou importar modelo 3D**, digite o que procura (em português). O
+aplicativo traduz os termos mais comuns para o inglês e busca arquivos .stl de
+licença livre na Wikimedia Commons, sem cadastro. Um toque no resultado baixa,
+simplifica e planifica o modelo. O crédito do autor e a licença aparecem na
+tela e no rodapé do PDF, como as licenças livres exigem.
+
+A mesma busca abre no Printables e no Thingiverse (.stl) e no Sketchfab (.glb):
+baixe o arquivo e escolha-o em **Ou use um arquivo do aparelho**.
 
 Modelos importados são simplificados para o número de faces escolhido
 (agrupamento de vértices) antes de planificar.
@@ -88,7 +99,9 @@ As medidas de todas as peças saem do comprimento total:
   `js/lib/jspdf-LICENSE.txt`) para gerar o PDF sem internet.
 - `js/malha3d.js`: formas 3D, pinturas, subdivisão e planificação.
 - `js/figuras.js`, `js/figuras2.js`: catálogo de figuras.
-- `js/importar.js`: leitura e simplificação de .obj e .stl.
+- `js/importar.js`: leitura (.stl, .obj, .glb) e simplificação de modelos.
+- `js/buscar.js`: busca de modelos livres na Wikimedia Commons e links de busca.
+- `imagens/`: capa (abertura e compartilhamento) e faixa do topo.
 - `js/previa3d.js`: prévia 3D da figura montada.
 - `testes/testes.js`: testes automáticos.
 

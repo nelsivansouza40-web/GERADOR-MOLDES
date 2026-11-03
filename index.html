@@ -11,6 +11,14 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Moldes">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Gerador de Moldes">
+<meta property="og:description" content="Moldes em escala real para papel, papelão e EVA: animais, corpo humano, veículos, EPI, máquinas, personagens e modelos 3D da internet.">
+<meta property="og:image" content="https://nelsivansouza40-web.github.io/GERADOR-MOLDES/imagens/capa.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://nelsivansouza40-web.github.io/GERADOR-MOLDES/">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="description" content="Moldes de papel, papelão e EVA calculados pelas medidas, em escala real, prontos para imprimir.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -117,6 +125,21 @@ button:disabled { opacity: .55; cursor: progress; }
 .rotulo-campo { font-weight: 600; font-size: .92rem; }
 .botao-arquivo { display: inline-block; align-self: flex-start; cursor: pointer; border: 1px solid var(--linha); border-radius: var(--raio); padding: 9px 14px; font-weight: 600; background: var(--superficie); color: var(--texto); }
 .oculto:focus-visible + .botao-arquivo, .botao-arquivo:hover { outline: 2px solid var(--acao); outline-offset: 1px; }
+.linha-busca { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.resultados { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.resultado { display: flex; flex-direction: column; gap: 4px; padding: 6px; text-align: left; font-weight: 400; min-width: 0; }
+.resultado img, .resultado .sem-imagem { width: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: 4px; display: grid; place-items: center; color: var(--texto-suave); }
+.resultado .r-titulo { font-weight: 600; font-size: .85rem; line-height: 1.2; overflow-wrap: anywhere; }
+.resultado .r-info { font-size: .75rem; color: var(--texto-suave); }
+.links-busca { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.links-busca .dica { flex-basis: 100%; }
+.links-busca a { color: var(--acao); font-weight: 600; }
+.abertura { position: fixed; inset: 0; z-index: 50; background: #2f5b4b; display: grid; place-items: center; padding: 16px; cursor: pointer; transition: opacity .45s ease; }
+.abertura img { width: min(100%, 900px); height: auto; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.abertura.saindo { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .abertura { transition: none; } }
+.faixa { background: #2f5b4b; line-height: 0; }
+.faixa img { display: block; width: 100%; max-width: 1600px; margin: 0 auto; height: clamp(84px, 16vw, 220px); object-fit: cover; }
 .marcar { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: .92rem; cursor: pointer; }
 .marcar input { width: 18px; height: 18px; accent-color: var(--destaque); }
 #previa { width: 100%; height: 340px; display: block; touch-action: none; cursor: grab; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--superficie) 70%, var(--linha)), var(--superficie)); border-radius: var(--raio); }
@@ -155,7 +178,7 @@ td.num { font-family: var(--fonte-numero); font-variant-numeric: tabular-nums; w
 #impressao { display: none; }
 @media print {
   body { background: #fff; }
-  body::before, .topo, .bancada { display: none !important; }
+  body::before, .topo, .bancada, .faixa, .abertura { display: none !important; }
   #impressao { display: block; }
   #impressao svg { display: block; break-after: page; page-break-after: always; }
 }
@@ -166,12 +189,14 @@ td.num { font-family: var(--fonte-numero); font-variant-numeric: tabular-nums; w
 </style>
 </head>
 <body>
+<div id="abertura" class="abertura" role="img" aria-label="Gerador de Moldes"><img src="imagens/capa.jpg" alt=""></div>
 <header class="topo">
   <div class="topo-dentro">
     <h1>Gerador de Moldes</h1>
     <p>Moldes calculados pelas medidas, em escala real, para papel, papelão e EVA.</p>
   </div>
 </header>
+<div class="faixa"><img src="imagens/faixa.jpg" alt="Figuras montadas em papel e folhas de molde sobre a base de corte"></div>
 
 <main class="bancada">
   <section class="painel" aria-label="Medidas e material">
@@ -261,6 +286,17 @@ td.num { font-family: var(--fonte-numero); font-variant-numeric: tabular-nums; w
 <script src="js/figuras.js"></script>
 <script src="js/figuras2.js"></script>
 <script src="js/importar.js"></script>
+<script src="js/buscar.js"></script>
+<script>
+  // Tela de abertura: some sozinha em 1,5 s ou com um toque
+  (function () {
+    var a = document.getElementById('abertura');
+    if (!a) return;
+    var sair = function () { a.classList.add('saindo'); setTimeout(function () { a.hidden = true; }, 500); };
+    a.addEventListener('click', sair);
+    setTimeout(sair, 1500);
+  })();
+</script>
 <script src="js/previa3d.js"></script>
 <script src="js/paginacao.js"></script>
 <script src="js/app.js"></script>

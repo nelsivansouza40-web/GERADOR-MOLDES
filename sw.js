@@ -3,12 +3,12 @@
  * abrir e gerar PDF sem internet. Ao publicar uma versão nova, aumente
  * CACHE_VERSION para os aparelhos baixarem os arquivos novos.
  */
-const CACHE_VERSION = 'moldes-v1';
+const CACHE_VERSION = 'moldes-v2';
 const ARQUIVOS = [
   './', './index.html', './manifest.webmanifest',
   './js/lib/jspdf.umd.min.js', './js/geometria.js', './js/malha3d.js', './js/figuras.js', './js/figuras2.js',
-  './js/importar.js', './js/previa3d.js', './js/paginacao.js', './js/app.js',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
+  './js/importar.js', './js/buscar.js', './js/previa3d.js', './js/paginacao.js', './js/app.js',
+  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './imagens/capa.jpg', './imagens/faixa.jpg',
 ];
 const FONTES = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 

@@ -58,9 +58,17 @@
     $('campos').innerHTML = m.campos.map((c) => {
       const idc = 'campo-' + estado.modelo + '-' + c.id;
       const v = vals[c.id] != null ? vals[c.id] : (c.padrao === '' ? '' : String(c.padrao).replace('.', ','));
+      if (c.tipo === 'busca') {
+        return `<div class="campo busca"><label for="termo-busca">${esc(c.rotulo)}</label>
+          <div class="linha-busca"><div class="entrada"><input id="termo-busca" type="search" autocomplete="off" placeholder="ex.: capacete, cavalo, crânio" value="${esc(estado.termoBusca || '')}"></div>
+          <button type="button" id="btn-buscar">Buscar</button></div>
+          <span class="dica">Busca gratuita em modelos .stl de licença livre (Wikimedia). Precisa de internet.</span>
+          <div id="resultados-busca" class="resultados" aria-live="polite"></div>
+          <div id="links-busca" class="links-busca"></div></div>`;
+      }
       if (c.tipo === 'arquivo') {
         const nome = window.Importar && window.Importar.estado.nome;
-        return `<div class="campo"><span class="rotulo-campo">${esc(c.rotulo)}</span><input type="file" id="${idc}" class="oculto" data-arquivo="1" accept=".obj,.stl"><label class="botao-arquivo" for="${idc}">Escolher arquivo .obj ou .stl</label><span class="dica" id="info-arquivo">${nome ? 'Carregado: ' + esc(nome) : 'Nenhum arquivo escolhido.'}</span></div>`;
+        return `<div class="campo"><span class="rotulo-campo">${esc(c.rotulo)}</span><input type="file" id="${idc}" class="oculto" data-arquivo="1" accept=".stl,.obj,.glb"><label class="botao-arquivo" for="${idc}">Escolher arquivo .stl, .obj ou .glb</label><span class="dica" id="info-arquivo">${nome ? 'Carregado: ' + esc(nome) : 'Nenhum arquivo escolhido.'}</span></div>`;
       }
       if (c.tipo === 'opcoes') {
         return `<div class="campo"><label for="${idc}">${esc(c.rotulo)}</label><div class="entrada"><select id="${idc}" data-campo="${c.id}">${
@@ -73,7 +81,7 @@
   function lerCampos() {
     const vals = estado.valores[estado.modelo] = estado.valores[estado.modelo] || {};
     for (const el of $('campos').querySelectorAll('[data-campo]')) vals[el.dataset.campo] = el.value;
-    if (estado.modelo === 'importar') vals.arquivo = undefined;
+    if (estado.modelo === 'importar') { vals.arquivo = undefined; vals.busca = undefined; }
     return vals;
   }
 
@@ -128,7 +136,7 @@
       numero: i + 1,
       total: estado.folhas.length,
       colorido: !!estado.colorido && !!(estado.resultado && estado.resultado.cena),
-      rodape: `Material: ${mat && mat.t != null ? mat.nome : 'espessura informada'} (${br(t, t < 1 ? 2 : 1)} mm). Imprima em tamanho real (100%), sem ajustar à página.`,
+      rodape: `Material: ${mat && mat.t != null ? mat.nome : 'espessura informada'} (${br(t, t < 1 ? 2 : 1)} mm). Imprima em tamanho real (100%), sem ajustar à página.` + (estado.modelo === 'importar' && window.Importar && window.Importar.estado.credito ? ` Modelo: ${window.Importar.estado.credito}`.slice(0, 140) : ''),
     };
   }
 
@@ -329,6 +337,7 @@
     leitor.onload = () => {
       try {
         const info = window.Importar.definir(arq.name, leitor.result);
+        window.Importar.estado.credito = '';
         $('info-arquivo').textContent = `Carregado: ${arq.name} (${info.faces} faces).`;
         atualizar();
       } catch (err) { $('info-arquivo').textContent = err.message; }
@@ -336,7 +345,57 @@
     leitor.onerror = () => { $('info-arquivo').textContent = 'Não foi possível ler o arquivo.'; };
     leitor.readAsArrayBuffer(arq);
   });
-  $('campos').addEventListener('input', (e) => { if (!e.target.dataset.arquivo) agendar(); });
+  $('campos').addEventListener('input', (e) => { if (!e.target.dataset.arquivo && e.target.id !== 'termo-busca') agendar(); });
+
+  // ------------------------------------------------------------- busca 3D
+  async function fazerBusca() {
+    const termo = ($('termo-busca').value || '').trim();
+    if (!termo) { $('termo-busca').focus(); return; }
+    estado.termoBusca = termo;
+    const caixa = $('resultados-busca');
+    $('links-busca').innerHTML = `<span class="dica">Mais opções, para baixar e depois escolher o arquivo acima:</span>` +
+      window.Buscar.linksExternos(termo).map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} <small>${esc(l.formato)}</small></a>`).join('');
+    if (!navigator.onLine) { caixa.innerHTML = '<div class="aviso">Sem internet agora. A busca precisa de conexão; os moldes prontos continuam funcionando.</div>'; return; }
+    caixa.innerHTML = '<span class="dica">Buscando…</span>';
+    try {
+      const r = await window.Buscar.buscar(termo);
+      if (!r.resultados.length) {
+        caixa.innerHTML = `<div class="aviso">Nenhum modelo livre encontrado para "${esc(termo)}"${r.termoUsado && r.termoUsado !== termo.toLowerCase() ? ` (busquei também "${esc(r.termoUsado)}")` : ''}. Tente outra palavra ou use os sites abaixo.</div>`;
+        return;
+      }
+      ultimosResultados = r.resultados;
+      caixa.innerHTML = r.resultados.map((m, i) => `<button type="button" class="resultado" data-i="${i}">
+          ${m.miniatura ? `<img src="${esc(m.miniatura)}" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;sem-imagem&quot;>3D</span>'">` : '<span class="sem-imagem">3D</span>'}
+          <span class="r-titulo">${esc(m.titulo)}</span>
+          <span class="r-info">${esc(m.licenca)}${m.tamanho ? ' · ' + (m.tamanho < 1048576 ? Math.max(1, Math.round(m.tamanho / 1024)) + ' KB' : (m.tamanho / 1048576).toFixed(1).replace('.', ',') + ' MB') : ''}</span></button>`).join('');
+    } catch (err) {
+      caixa.innerHTML = '<div class="aviso">Não foi possível buscar agora. Confira a internet e tente de novo, ou use os sites abaixo.</div>';
+    }
+  }
+  let ultimosResultados = [];
+  async function usarResultado(i) {
+    const m = ultimosResultados[i];
+    if (!m) return;
+    if (m.tamanho > 40 * 1048576) { $('info-arquivo').textContent = 'Arquivo muito grande para o celular (mais de 40 MB). Escolha outro.'; return; }
+    $('info-arquivo').textContent = `Baixando "${m.titulo}"…`;
+    try {
+      const resp = await fetch(m.url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const info = window.Importar.definir(m.arquivo, await resp.arrayBuffer());
+      window.Importar.estado.credito = `${m.titulo} — ${m.autor ? m.autor + ', ' : ''}${m.licenca}, Wikimedia Commons`;
+      $('info-arquivo').textContent = `Carregado: ${m.titulo} (${info.faces} faces). Licença: ${m.licenca}${m.autor ? ', autor: ' + m.autor : ''}.`;
+      atualizar();
+      $('info-arquivo').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } catch (err) {
+      $('info-arquivo').textContent = 'Não foi possível baixar este modelo. Tente outro.';
+    }
+  }
+  $('campos').addEventListener('click', (e) => {
+    if (e.target.id === 'btn-buscar') fazerBusca();
+    const r = e.target.closest && e.target.closest('.resultado');
+    if (r) usarResultado(+r.dataset.i);
+  });
+  $('campos').addEventListener('keydown', (e) => { if (e.target.id === 'termo-busca' && e.key === 'Enter') { e.preventDefault(); fazerBusca(); } });
   $('campos').addEventListener('change', (e) => { if (!e.target.dataset.arquivo) agendar(); });
   $('material').addEventListener('change', () => {
     estado.material = $('material').value;

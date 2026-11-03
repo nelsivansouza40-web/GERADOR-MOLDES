@@ -7,10 +7,17 @@ const M = require('../js/malha3d.js');
 const F = require('../js/figuras.js');
 require('../js/figuras2.js');
 const I = require('../js/importar.js');
+const B = require('../js/buscar.js');
 
 let ok = 0;
+const pendentes = [];
 function teste(nome, fn) {
-  try { fn(); ok++; } catch (e) { console.error('FALHOU:', nome, '\n ', e.message); process.exitCode = 1; }
+  const falha = (e) => { console.error('FALHOU:', nome, '\n ', e.message); process.exitCode = 1; };
+  try {
+    const r = fn();
+    if (r && r.then) pendentes.push(r.then(() => { ok++; }, falha));
+    else ok++;
+  } catch (e) { falha(e); }
 }
 const perto = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg}: ${a} ≠ ${b}`);
 
@@ -198,6 +205,78 @@ teste('importar .stl binário: caixa sem linhas de dobra nas diagonais', () => {
   assert.ok(dobras - abas <= 5, 'uma caixa aberta em cruz tem 5 dobras; encontradas ' + (dobras - abas));
 });
 
+// 7. Busca na internet (respostas simuladas no formato da API da Wikimedia)
+function respostaCommons(titulos) {
+  const pages = {};
+  titulos.forEach((t, i) => {
+    pages[-(i + 1)] = {
+      title: 'File:' + t, index: i + 1,
+      imageinfo: [{ url: 'https://upload.wikimedia.org/x/' + t, thumburl: 'https://upload.wikimedia.org/thumb/' + t + '.png', size: 123456, descriptionurl: 'https://commons.wikimedia.org/wiki/File:' + t,
+        extmetadata: { LicenseShortName: { value: 'CC BY-SA 4.0' }, Artist: { value: '<a href="#">Fulano</a>' } } }],
+    };
+  });
+  return { query: { pages } };
+}
+teste('busca: tradução dos termos para o inglês', () => {
+  assert.strictEqual(B.traduzir('Capacete'), 'helmet');
+  assert.strictEqual(B.traduzir('cabeça de cavalo'), 'head horse');
+  assert.strictEqual(B.traduzir('extintor'), 'fire extinguisher');
+  assert.strictEqual(B.traduzir('xyzabc'), 'xyzabc');
+});
+teste('busca: lê a resposta e fica só com .stl, com licença e autor', () => {
+  const r = B.lerResposta(respostaCommons(['Helmet_model.stl', 'Foto.jpg']));
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].titulo, 'Helmet model');
+  assert.strictEqual(r[0].licenca, 'CC BY-SA 4.0');
+  assert.strictEqual(r[0].autor, 'Fulano');
+  assert.ok(B.urlBusca('helmet').includes('origin=%2A') || B.urlBusca('helmet').includes('origin=*'));
+});
+teste('busca: usa reserva quando o filtro não traz nada', async () => {
+  const urls = [];
+  const r = await B.buscar('capacete', async (u) => { urls.push(u); return urls.length < 3 ? { query: { pages: {} } } : respostaCommons(['A.stl']); });
+  assert.strictEqual(r.resultados.length, 1);
+  assert.ok(decodeURIComponent(urls[0].replace(/\+/g, ' ')).includes('filemime:application/sla helmet'));
+});
+teste('busca: links para Printables, Thingiverse e Sketchfab', () => {
+  const l = B.linksExternos('cavalo');
+  assert.deepStrictEqual(l.map((x) => x.nome), ['Printables', 'Thingiverse', 'Sketchfab']);
+  assert.ok(l[0].url.endsWith('q=horse'));
+});
+
+// 8. Arquivo .glb
+function caixaGLB() {
+  const pos = new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1]);
+  const idx = new Uint16Array([0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7]);
+  const bin = Buffer.concat([Buffer.from(pos.buffer), Buffer.from(idx.buffer)]);
+  const json = {
+    asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }],
+    nodes: [{ children: [1], scale: [2, 2, 2] }, { mesh: 0, translation: [5, 0, 0] }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1 }] }],
+    buffers: [{ byteLength: bin.length }],
+    bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: pos.byteLength }, { buffer: 0, byteOffset: pos.byteLength, byteLength: idx.byteLength }],
+    accessors: [{ bufferView: 0, componentType: 5126, count: 8, type: 'VEC3' }, { bufferView: 1, componentType: 5123, count: 36, type: 'SCALAR' }],
+  };
+  let js = Buffer.from(JSON.stringify(json));
+  while (js.length % 4) js = Buffer.concat([js, Buffer.from(' ')]);
+  let bn = bin; while (bn.length % 4) bn = Buffer.concat([bn, Buffer.alloc(1)]);
+  const total = 12 + 8 + js.length + 8 + bn.length;
+  const h = Buffer.alloc(12); h.writeUInt32LE(0x46546C67, 0); h.writeUInt32LE(2, 4); h.writeUInt32LE(total, 8);
+  const c1 = Buffer.alloc(8); c1.writeUInt32LE(js.length, 0); c1.writeUInt32LE(0x4E4F534A, 4);
+  const c2 = Buffer.alloc(8); c2.writeUInt32LE(bn.length, 0); c2.writeUInt32LE(0x004E4942, 4);
+  const all = Buffer.concat([h, c1, js, c2, bn]);
+  return all.buffer.slice(all.byteOffset, all.byteOffset + all.length);
+}
+teste('importar .glb: lê a malha com as transformações dos nós', () => {
+  const m = I.lerGLB(caixaGLB());
+  assert.strictEqual(m.f.length, 12);
+  const xs = m.v.map((p) => p[0]);
+  assert.strictEqual(Math.min(...xs), 10); // (0 + 5) × 2
+  assert.strictEqual(Math.max(...xs), 12);
+  I.definir('caixa.glb', caixaGLB());
+  const r = G.gerar('importar', { tam: 10, faces: 300, eixo: 'y' }, 0.2, 0, P.areaUtil(P.PAPEIS.A4));
+  assert.ok(r.verificacoes[0].ok);
+});
+
 // 4. Paginação: tudo dentro da área útil e sem sobreposição
 for (const papelId of Object.keys(P.PAPEIS)) {
   teste(`paginação ${papelId}`, () => {
@@ -228,4 +307,4 @@ for (const papelId of Object.keys(P.PAPEIS)) {
   });
 }
 
-console.log(`${ok} testes passaram${process.exitCode ? ', com falhas acima' : ''}.`);
+Promise.all(pendentes).then(() => console.log(`${ok} testes passaram${process.exitCode ? ', com falhas acima' : ''}.`));
