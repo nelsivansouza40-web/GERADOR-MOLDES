@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gerador de Moldes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#2f5b4b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Moldes">
+<meta name="description" content="Moldes de papel, papelão e EVA calculados pelas medidas, em escala real, prontos para imprimir.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: bancada de corte — painel de medidas à esquerda, folhas sobre a base de corte verde à direita. */
+:root {
+  --fundo: #eef1ee;
+  --superficie: #ffffff;
+  --texto: #18211d;
+  --texto-suave: #55635c;
+  --linha: #d3dbd6;
+  --base-corte: #2f5b4b;
+  --base-corte-grade: rgba(255,255,255,.09);
+  --destaque: #c8321f;
+  --destaque-texto: #ffffff;
+  --acao: #23473a;
+  --ok: #2b7a4b;
+  --alerta: #a35a00;
+  --alerta-fundo: #fff4e2;
+  --erro: #b3261e;
+  --erro-fundo: #fdecea;
+  --fonte-titulo: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif;
+  --fonte-texto: "Source Sans 3", "Segoe UI", Roboto, Arial, sans-serif;
+  --fonte-numero: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --raio: 6px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fundo: #121815; --superficie: #1b2420; --texto: #e4ebe7; --texto-suave: #9fb0a7; --linha: #2e3b35;
+    --base-corte: #1f3d33; --base-corte-grade: rgba(255,255,255,.06); --destaque: #ff6a52; --destaque-texto: #1a0a06;
+    --acao: #7fc4a6; --ok: #6fcf97; --alerta: #f2b45a; --alerta-fundo: #2e2414; --erro: #ff8a80; --erro-fundo: #3a1a18;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --fundo: #121815; --superficie: #1b2420; --texto: #e4ebe7; --texto-suave: #9fb0a7; --linha: #2e3b35;
+  --base-corte: #1f3d33; --base-corte-grade: rgba(255,255,255,.06); --destaque: #ff6a52; --destaque-texto: #1a0a06;
+  --acao: #7fc4a6; --ok: #6fcf97; --alerta: #f2b45a; --alerta-fundo: #2e2414; --erro: #ff8a80; --erro-fundo: #3a1a18;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--fundo); color: var(--texto);
+  font-family: var(--fonte-texto); font-size: 15px; line-height: 1.45;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--base-corte); }
+
+.topo {
+  background: var(--base-corte); color: #f3f7f4;
+  padding-block: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.topo-dentro { max-width: 1320px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.topo h1 { margin: 0; font-family: var(--fonte-titulo); font-weight: 700; font-size: 1.7rem; letter-spacing: .01em; }
+.topo p { margin: 0; color: #c9dbd2; font-size: .95rem; }
+
+.bancada {
+  max-width: 1320px; margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (max-width: 860px) { .bancada { grid-template-columns: minmax(0, 1fr); } }
+
+.painel { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.bloco { background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.bloco h2 { margin: 0; font-family: var(--fonte-titulo); font-weight: 600; font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-suave); }
+
+.campo { display: flex; flex-direction: column; gap: 4px; }
+.campo label { font-weight: 600; font-size: .92rem; }
+.campo .dica { font-size: .82rem; color: var(--texto-suave); }
+.entrada { display: flex; align-items: stretch; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); overflow: hidden; }
+.entrada:focus-within { outline: 2px solid var(--acao); outline-offset: 1px; }
+.entrada input, .entrada select { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--texto); font: inherit; padding: 9px 10px; }
+.entrada input { font-family: var(--fonte-numero); font-size: .95rem; }
+.entrada input:focus, .entrada select:focus { outline: none; }
+.entrada .un { padding: 9px 10px; color: var(--texto-suave); font-family: var(--fonte-numero); font-size: .85rem; background: color-mix(in srgb, var(--linha) 35%, transparent); }
+.linha2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+
+.descricao { margin: 0; font-size: .9rem; color: var(--texto-suave); }
+
+.acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font: inherit; cursor: pointer; border-radius: var(--raio); padding: 10px 14px; border: 1px solid var(--linha); background: var(--superficie); color: var(--texto); font-weight: 600; }
+button:focus-visible { outline: 2px solid var(--acao); outline-offset: 2px; }
+button.principal { background: var(--destaque); border-color: var(--destaque); color: var(--destaque-texto); }
+button:disabled { opacity: .55; cursor: progress; }
+
+.resumo { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .92rem; }
+.resumo b { font-family: var(--fonte-numero); font-weight: 500; }
+.lista-conf { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: .88rem; }
+.lista-conf li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; }
+.lista-conf .sinal { font-weight: 700; color: var(--ok); }
+.lista-conf .sinal.nao { color: var(--erro); }
+.aviso { border-radius: var(--raio); padding: 10px 12px; font-size: .9rem; background: var(--alerta-fundo); color: var(--texto); border: 1px solid color-mix(in srgb, var(--alerta) 45%, transparent); }
+.erro { background: var(--erro-fundo); border-color: color-mix(in srgb, var(--erro) 45%, transparent); }
+.oculto { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.rotulo-campo { font-weight: 600; font-size: .92rem; }
+.botao-arquivo { display: inline-block; align-self: flex-start; cursor: pointer; border: 1px solid var(--linha); border-radius: var(--raio); padding: 9px 14px; font-weight: 600; background: var(--superficie); color: var(--texto); }
+.oculto:focus-visible + .botao-arquivo, .botao-arquivo:hover { outline: 2px solid var(--acao); outline-offset: 1px; }
+.marcar { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: .92rem; cursor: pointer; }
+.marcar input { width: 18px; height: 18px; accent-color: var(--destaque); }
+#previa { width: 100%; height: 340px; display: block; touch-action: none; cursor: grab; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--superficie) 70%, var(--linha)), var(--superficie)); border-radius: var(--raio); }
+.previa-bloco .dica { font-size: .82rem; color: var(--texto-suave); }
+.mensagem { font-size: .88rem; color: var(--texto-suave); min-height: 1.2em; }
+
+.mesa { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.abas { display: flex; gap: 4px; border-bottom: 1px solid var(--linha); }
+.abas button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; padding: 8px 12px; color: var(--texto-suave); }
+.abas button[aria-selected="true"] { color: var(--texto); border-bottom-color: var(--destaque); }
+
+.base-corte {
+  background-color: var(--base-corte);
+  background-image:
+    linear-gradient(var(--base-corte-grade) 1px, transparent 1px),
+    linear-gradient(90deg, var(--base-corte-grade) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border-radius: var(--raio); padding: 16px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px;
+}
+.folha-env { display: flex; flex-direction: column; gap: 6px; }
+.folha-env svg { width: 100%; height: auto; display: block; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); border-radius: 2px; }
+.folha-env span { color: #d9e7e0; font-size: .82rem; font-family: var(--fonte-numero); }
+
+.tabela-env { overflow-x: auto; background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--linha); }
+th { font-family: var(--fonte-titulo); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: .78rem; color: var(--texto-suave); }
+td.num { font-family: var(--fonte-numero); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.passos { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; max-width: 70ch; }
+.dicas { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; max-width: 70ch; color: var(--texto-suave); font-size: .92rem; }
+.secao { display: flex; flex-direction: column; gap: 10px; }
+.secao h3 { margin: 0; font-family: var(--fonte-titulo); font-weight: 600; font-size: 1.15rem; }
+
+/* Impressão: só as folhas, em tamanho real */
+#impressao { display: none; }
+@media print {
+  body { background: #fff; }
+  body::before, .topo, .bancada { display: none !important; }
+  #impressao { display: block; }
+  #impressao svg { display: block; break-after: page; page-break-after: always; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .folha-env svg { transition: opacity .15s; }
+}
+.atualizando .folha-env svg { opacity: .5; }
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="topo-dentro">
+    <h1>Gerador de Moldes</h1>
+    <p>Moldes calculados pelas medidas, em escala real, para papel, papelão e EVA.</p>
+  </div>
+</header>
+
+<main class="bancada">
+  <section class="painel" aria-label="Medidas e material">
+    <div class="bloco">
+      <h2>O que montar</h2>
+      <div class="campo">
+        <label for="modelo">Modelo</label>
+        <div class="entrada"><select id="modelo"></select></div>
+      </div>
+      <p class="descricao" id="descricao"></p>
+      <div id="campos" class="secao"></div>
+    </div>
+
+    <div class="bloco">
+      <h2>Material e impressão</h2>
+      <div class="campo">
+        <label for="material">Material</label>
+        <div class="entrada"><select id="material"></select></div>
+      </div>
+      <div class="linha2">
+        <div class="campo">
+          <label for="espessura">Espessura</label>
+          <div class="entrada"><input id="espessura" inputmode="decimal" autocomplete="off"><span class="un">mm</span></div>
+        </div>
+        <div class="campo">
+          <label for="aba">Largura das abas</label>
+          <div class="entrada"><input id="aba" inputmode="decimal" autocomplete="off" placeholder="auto"><span class="un">mm</span></div>
+        </div>
+      </div>
+      <label class="marcar" id="linha-colorido"><input type="checkbox" id="colorido"> Imprimir as peças coloridas</label>
+      <div class="campo">
+        <label for="papel">Papel da impressora</label>
+        <div class="entrada"><select id="papel"></select></div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h2>Resultado</h2>
+      <div class="resumo" id="resumo"></div>
+      <div id="avisos" class="secao"></div>
+      <ul class="lista-conf" id="verificacoes"></ul>
+      <div class="acoes">
+        <button class="principal" id="btn-pdf" type="button">Baixar PDF</button>
+        <button id="btn-imprimir" type="button">Imprimir</button>
+      </div>
+      <div class="mensagem" id="mensagem" role="status"></div>
+    </div>
+  </section>
+
+  <section class="mesa" aria-label="Moldes">
+    <div class="abas" role="tablist">
+      <button role="tab" id="aba-folhas" aria-selected="true" aria-controls="painel-folhas" type="button">Folhas para imprimir</button>
+      <button role="tab" id="aba-montagem" aria-selected="false" aria-controls="painel-montagem" type="button">Peças e montagem</button>
+    </div>
+    <div id="painel-folhas" role="tabpanel" aria-labelledby="aba-folhas" class="secao">
+      <div class="bloco previa-bloco" id="bloco-previa" hidden>
+        <h2>Como fica montado</h2>
+        <canvas id="previa" aria-label="Prévia 3D da figura montada. Arraste para girar."></canvas>
+        <span class="dica">Arraste para girar.</span>
+      </div>
+      <div class="base-corte" id="folhas"></div>
+    </div>
+    <div id="painel-montagem" role="tabpanel" aria-labelledby="aba-montagem" class="secao" hidden>
+      <div class="tabela-env">
+        <table>
+          <thead><tr><th>Peça</th><th>Nome</th><th>Qtd.</th><th>Medida (sem abas)</th></tr></thead>
+          <tbody id="tabela-pecas"></tbody>
+        </table>
+      </div>
+      <div class="secao">
+        <h3>Montagem</h3>
+        <ol class="passos" id="passos"></ol>
+      </div>
+      <div class="secao">
+        <h3>Dicas para o material escolhido</h3>
+        <ul class="dicas" id="dicas"></ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="impressao" aria-hidden="true"></div>
+
+<script src="js/lib/jspdf.umd.min.js"></script>
+<script src="js/geometria.js"></script>
+<script src="js/malha3d.js"></script>
+<script src="js/figuras.js"></script>
+<script src="js/figuras2.js"></script>
+<script src="js/importar.js"></script>
+<script src="js/previa3d.js"></script>
+<script src="js/paginacao.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
